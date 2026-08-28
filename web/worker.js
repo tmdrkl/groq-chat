@@ -21,7 +21,7 @@ function badRequest(message = "Permintaan tidak valid") {
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: corsHeaders({ "Content-Type": "application/json" }),
   });
 }
 
