@@ -106,9 +106,9 @@ export class ChatCounter {
       }
 
       if (url.pathname === "/loginlog") {
-        const { ip } = await request.json();
+        const { ip, country } = await request.json();
         const list = (await this.state.storage.get("logins")) || [];
-        list.push({ ip, time: new Date().toISOString() });
+        list.push({ ip, country: country || "??", time: new Date().toISOString() });
         if (list.length > 20) list.splice(0, list.length - 20);
         await this.state.storage.put("logins", list);
         return jsonResponse({ ok: true });
@@ -236,6 +236,13 @@ export default {
       }
     }
 
+    if (request.method === "GET" && url.pathname === "/geo") {
+      return new Response(JSON.stringify({
+        ip: request.headers.get("CF-Connecting-IP") || "unknown",
+        country: request.headers.get("CF-IPCountry") || "unknown",
+      }), { headers: jsonHeaders() });
+    }
+
     if (request.method === "GET" && url.pathname === "/models") {
       const apiKey = env.GROQ_API_KEY;
       if (!apiKey) {
@@ -268,7 +275,7 @@ export default {
       const sig = await hmacSign(env.CHAT_PIN, `${ip}:${exp}`);
       const stub = counter(env);
       if (stub) {
-        try { await counterCall(stub, "loginlog", { ip }); } catch {}
+        try { await counterCall(stub, "loginlog", { ip, country: request.headers.get("CF-IPCountry") || "??" }); } catch {}
       }
       return new Response(JSON.stringify({ token: `${exp}.${sig}`, expires: exp }), { headers: jsonHeaders() });
     }
