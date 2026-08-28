@@ -1,0 +1,17 @@
+name = "groq-chat"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[durable_objects]
+bindings = [{ name = "COUNTER", class_name = "ChatCounter" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatCounter"]
+
+[vars]
+# Batas percakapan per pengunjung per 24 jam (default 50)
+MAX_CHATS_PER_DAY = "50"
+
+# API key set via: npx wrangler secret put GROQ_API_KEY
+# (jangan disimpan di file ini)

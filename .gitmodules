@@ -1,0 +1,3 @@
+[submodule "handbooks/void-docs"]
+	path = handbooks/void-docs
+	url = https://github.com/void-linux/void-docs.git
