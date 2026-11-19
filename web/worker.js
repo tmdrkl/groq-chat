@@ -72,6 +72,7 @@ export class ChatCounter {
   constructor(state, env) {
     this.state = state;
     this.maxChats = parseInt((env && env.MAX_CHATS_PER_DAY) || "50", 10) || 50;
+    this.maxContacts = parseInt((env && env.MAX_CONTACTS_PER_DAY) || "5", 10) || 5;
   }
 
   async fetch(request) {
@@ -101,6 +102,18 @@ export class ChatCounter {
         let count = 0;
         if (rec && now - rec.ts < RATE_LIMIT_WINDOW) count = rec.count;
         if (count >= this.maxChats) return jsonResponse({ limited: true });
+        await this.state.storage.put(key, { count: count + 1, ts: now });
+        return jsonResponse({ limited: false, count: count + 1 });
+      }
+
+      if (url.pathname === "/contactrate") {
+        const { ip } = await request.json();
+        const key = "cl:" + ip;
+        const now = Math.floor(Date.now() / 1000);
+        const rec = await this.state.storage.get(key);
+        let count = 0;
+        if (rec && now - rec.ts < RATE_LIMIT_WINDOW) count = rec.count;
+        if (count >= this.maxContacts) return jsonResponse({ limited: true });
         await this.state.storage.put(key, { count: count + 1, ts: now });
         return jsonResponse({ limited: false, count: count + 1 });
       }
@@ -278,6 +291,76 @@ export default {
         try { await counterCall(stub, "loginlog", { ip, country: request.headers.get("CF-IPCountry") || "??" }); } catch {}
       }
       return new Response(JSON.stringify({ token: `${exp}.${sig}`, expires: exp }), { headers: jsonHeaders() });
+    }
+
+    if (request.method === "POST" && url.pathname === "/contact") {
+      const len = parseInt(request.headers.get("Content-Length") || "0", 10);
+      if (len > 10000) return jsonResponse({ error: "Pesan terlalu besar" }, 413);
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return badRequest("Body harus berupa JSON");
+      }
+
+      const message = typeof body.message === "string" ? body.message.trim() : "";
+      const replyTo = typeof body.replyTo === "string"
+        ? body.replyTo.replace(/[\r\n]+/g, " ").trim().slice(0, 200)
+        : "";
+      const page = typeof body.page === "string" ? body.page.slice(0, 100) : "/";
+
+      if (!message) return badRequest("Pesan tidak boleh kosong");
+      if (message.length > 2000) return badRequest("Pesan terlalu panjang (maks 2000 karakter)");
+
+      if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+        return jsonResponse({ error: "Kontak belum dikonfigurasi" }, 503);
+      }
+
+      const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+      const country = request.headers.get("CF-IPCountry") || "??";
+      const stub = counter(env);
+      if (stub) {
+        try {
+          const rl = await counterCall(stub, "contactrate", { ip: clientIp });
+          if (rl.limited) {
+            return jsonResponse({ error: "Terlalu banyak pesan hari ini. Coba lagi besok." }, 429);
+          }
+        } catch {
+          // jangan blokir pesan jika counter bermasalah
+        }
+      }
+
+      const text = [
+        "📬 New message from drkl.net",
+        "",
+        message,
+        "",
+        `Reply to: ${replyTo || "not provided"}`,
+        `Page: ${page} · Country: ${country}`,
+        `Time: ${new Date().toISOString()}`,
+      ].join("\n");
+
+      let tgRes;
+      try {
+        tgRes = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: env.TELEGRAM_CHAT_ID,
+            text,
+            disable_web_page_preview: true,
+          }),
+        });
+      } catch {
+        return jsonResponse({ error: "Gagal menghubungi Telegram" }, 502);
+      }
+
+      if (!tgRes.ok) {
+        return jsonResponse({ error: "Gagal mengirim pesan" }, 502);
+      }
+
+      return jsonResponse({ ok: true });
     }
 
     if (request.method === "POST" && url.pathname === "/chat") {

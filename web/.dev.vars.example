@@ -1,0 +1,6 @@
+# Local-only secrets for `wrangler dev`.
+# Copy this file to `.dev.vars` (git-ignored) and fill in real values.
+# In production set them with `wrangler secret put` instead.
+
+TELEGRAM_BOT_TOKEN=123456789:AAExampleTokenFromBotFather
+TELEGRAM_CHAT_ID=123456789

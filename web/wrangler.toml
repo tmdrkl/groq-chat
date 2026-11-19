@@ -13,5 +13,13 @@ new_sqlite_classes = ["ChatCounter"]
 # Batas percakapan per pengunjung per 24 jam (default 50)
 MAX_CHATS_PER_DAY = "50"
 
+# Batas pesan kontak per pengunjung per 24 jam (default 5)
+MAX_CONTACTS_PER_DAY = "5"
+
 # API key set via: npx wrangler secret put GROQ_API_KEY
 # (jangan disimpan di file ini)
+
+# Kontak dikirim ke Telegram. Buat bot lewat @BotFather, lalu:
+#   npx wrangler secret put TELEGRAM_BOT_TOKEN
+#   npx wrangler secret put TELEGRAM_CHAT_ID
+# (chat ID bisa dilihat lewat https://api.telegram.org/bot<TOKEN>/getUpdates)
