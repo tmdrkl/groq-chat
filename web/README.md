@@ -2,6 +2,8 @@
 
 Cloudflare Worker behind the chat and contact form on [drkl.net](https://www.drkl.net).
 
+Deployed at **https://groq-chat.tomx13.workers.dev** (account that owns the `tomx13` workers.dev subdomain).
+
 ## Endpoints
 
 | Method | Path | Purpose |
@@ -36,6 +38,27 @@ Cloudflare Worker behind the chat and contact form on [drkl.net](https://www.drk
 
 `MAX_CONTACTS_PER_DAY` (default `5`) caps messages per IP per 24 hours.
 The bot token never leaves the Worker.
+
+## Secrets
+
+| Secret | Purpose |
+|--------|---------|
+| `GROQ_API_KEY` | Groq chat completions + model list |
+| `CHAT_PIN` | Owner PIN for `/login`, lifts the chat rate limit |
+| `TELEGRAM_BOT_TOKEN` | Bot that delivers contact messages |
+| `TELEGRAM_CHAT_ID` | Destination chat for contact messages |
+
+Set them with `npx wrangler secret put <NAME>`, or from the dashboard under
+**Workers & Pages → groq-chat → Settings → Variables**.
+
+## Deployment notes
+
+- Run `npx wrangler deploy` from this `web/` directory.
+- Log in as the Cloudflare account that owns the `tomx13` workers.dev subdomain.
+  A different account fails with error `10063` (no workers.dev subdomain) or
+  creates a parallel worker under another URL, which the site will not use.
+- `wrangler deploy` publishes the code; the GitHub push is only source backup.
+- `MAX_CONTACTS_PER_DAY` and `MAX_CHATS_PER_DAY` live in `wrangler.toml`.
 
 ## Local development
 
